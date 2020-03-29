@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at Etherscan.io on 2020-03-29
-*/
-
 /*
 || <$> Dai Savings Escrow (DSE) <$> || version 1
 
