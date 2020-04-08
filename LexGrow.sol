@@ -1,12 +1,12 @@
 /*
-|| <$> Dai Savings Escrow (DSE) <$> || version 1
+|| <$> LexGrow (LXG) <$> || version 1
 
 DEAR MSG.SENDER(S):
 
-/ DSE is a project in beta.
+/ LXG is a project in beta.
 // Please audit and use at your own risk.
-/// Entry into DSE shall not create an attorney/client relationship.
-//// Likewise, DSE should not be construed as legal advice or replacement for professional counsel.
+/// Entry into LXG shall not create an attorney/client relationship.
+//// Likewise, LXG should not be construed as legal advice or replacement for professional counsel.
 ///// STEAL THIS C0D3SL4W 
 
 ~presented by Open, ESQ || lexDAO LLC
@@ -267,8 +267,7 @@ library SafeMath {
 }
 
 /**
- * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
- * the optional functions; to access them see {ERC20Detailed}.
+ * @dev Interface of the ERC20 standard as defined in the EIP.
  */
 interface IERC20 {
     /**
@@ -370,9 +369,9 @@ contract IChai {
 }
 
 /***************
-DSE CONTRACT
+LXG CONTRACT
 ***************/
-contract DaiSavingsEscrow is LexDAORole {  
+contract LexGrow is LexDAORole {  
     using SafeMath for uint256;
     
     // $DAI details:
@@ -383,14 +382,13 @@ contract DaiSavingsEscrow is LexDAORole {
     address private chaiAddress = 0x06AF07097C9Eeb7fD685c692751D5C66dB49c215;
     IChai public chai = IChai(chaiAddress);
     
-    // <$> DSE <$> details:
+    // <$> LXG <$> details:
     address private vault = address(this);
-    address public proposedManager;
     address payable public manager;
     uint8 public version = 1;
     uint256 public escrowFee;
-    uint256 public dse; // index for registered escrows
-    string public emoji = "⚖️🔐⚔️";
+    uint256 public lxg; // index for registered LexGrow
+    string public emoji = "⚖️🌱⚔️";
     mapping (uint256 => Escrow) public escrow; 
 
     struct Escrow {  
@@ -405,12 +403,11 @@ contract DaiSavingsEscrow is LexDAORole {
         bool released;
     }
     	
-    // DSE Contract Events:
+    // LXG Contract Events:
     event Registered(address indexed client, address indexed provider, uint256 indexed index);  
     event Released(uint256 indexed index); 
     event Disputed(uint256 indexed index, string indexed details); 
     event Resolved(uint256 indexed index, string indexed details); 
-    event ManagerProposed(address indexed proposedManager, string indexed details);
     event ManagerTransferred(address indexed manager, string indexed details);
     
     constructor () public {
@@ -422,14 +419,14 @@ contract DaiSavingsEscrow is LexDAORole {
     /***************
     ESCROW FUNCTIONS
     ***************/
-    function register( // register $DAI escrow with DSR via $CHAI; arbitration via lexDAO
+    function register( // register $DAI locker with DSR via $CHAI; arbitration via lexDAO
         address provider,
         uint256 payment, 
         uint256 termination,
         string memory details) public payable {
         require(msg.value == escrowFee);
-	    uint256 index = dse.add(1); 
-	    dse = dse.add(1);
+	    uint256 index = lxg.add(1); 
+	    lxg = lxg.add(1);
 	    
 	    dai.transferFrom(msg.sender, vault, payment); // deposit $DAI
         uint256 balance = chai.balanceOf(vault);
@@ -515,16 +512,9 @@ contract DaiSavingsEscrow is LexDAORole {
         escrowFee = weiAmount;
     }
     
-    function proposeManager(address _proposedManager, string memory details) public {
+    function transferManager(address payable newManager, string memory details) public {
         require(msg.sender == manager);
-        proposedManager = _proposedManager; // proposed DSE beneficiary account
-        
-        emit ManagerProposed(proposedManager, details);
-    }
-    
-    function transferManager(string memory details) public {
-        require(msg.sender == proposedManager);
-        manager = msg.sender; // accepting DSE beneficiary account
+        manager = newManager; 
         
         emit ManagerTransferred(manager, details);
     }
