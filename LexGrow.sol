@@ -394,7 +394,7 @@ contract LexGrow is LexDAORole {
     struct Escrow {  
         address client; 
         address provider;
-        uint256 payment;
+        uint256 deposit;
         uint256 wrap;
         uint256 termination;
         uint256 index;
@@ -407,7 +407,7 @@ contract LexGrow is LexDAORole {
     event Registered(address indexed client, address indexed provider, uint256 indexed index);  
     event Released(uint256 indexed index); 
     event Disputed(uint256 indexed index, string indexed details); 
-    event Resolved(uint256 indexed index, string indexed details); 
+    event Resolved(address indexed resolver, uint256 indexed index, string indexed details); 
     event ManagerTransferred(address indexed manager, string indexed details);
     
     constructor () public {
@@ -421,21 +421,21 @@ contract LexGrow is LexDAORole {
     ***************/
     function register( // register $DAI locker with DSR via $CHAI; arbitration via lexDAO
         address provider,
-        uint256 payment, 
+        uint256 deposit, 
         uint256 termination,
         string memory details) public payable {
         require(msg.value == escrowFee);
 	    uint256 index = lxg.add(1); 
 	    lxg = lxg.add(1);
 	    
-	    dai.transferFrom(msg.sender, vault, payment); // deposit $DAI
+	    dai.transferFrom(msg.sender, vault, deposit); // deposit $DAI
         uint256 balance = chai.balanceOf(vault);
-        chai.join(vault, payment); // wrap into $CHAI and store in vault
+        chai.join(vault, deposit); // wrap into $CHAI and store in vault
                 
             escrow[index] = Escrow( 
                 msg.sender, 
                 provider,
-                payment, 
+                deposit, 
                 chai.balanceOf(vault).sub(balance),
                 termination,
                 index,
@@ -451,6 +451,7 @@ contract LexGrow is LexDAORole {
     function release(uint256 index) public { 
     	Escrow storage escr = escrow[index];
 	    require(escr.disputed == false); // program safety check / status
+	    require(escr.released == false); // program safety check / status
     	require(now <= escr.termination); // program safety check / time
     	require(msg.sender == escr.client); // program safety check / authorization
 
@@ -464,6 +465,7 @@ contract LexGrow is LexDAORole {
     function withdraw(uint256 index) public { // client can withdraw $CHAI if termination time passes
     	Escrow storage escr = escrow[index];
         require(escr.disputed == false); // program safety check / status
+        require(escr.released == false); // program safety check / status
     	require(now >= escr.termination); // program safety check / time
     	require(msg.sender == escr.client); // program safety check / authorization
         
@@ -490,18 +492,18 @@ contract LexGrow is LexDAORole {
     
     function resolve(uint256 index, uint256 clientAward, uint256 providerAward, string memory details) public onlyLexDAO {
         Escrow storage escr = escrow[index];
-	    uint256 lexFee = escr.wrap.div(20); // calculates 5% lexDAO resolution fee
 	    require(escr.disputed == true); // program safety check / status
-	    require(clientAward.add(providerAward) == escr.wrap.sub(lexFee)); // program safety check / economics
-        require(msg.sender != escr.client || msg.sender != escr.provider); // program safety check / authorization  
+	    require(escr.released == false); // program safety check / status
+	    require(clientAward.add(providerAward) == escr.wrap); // program safety check / economics
+        require(msg.sender != escr.client); // program safety check / authorization  
+        require(msg.sender != escr.provider); // program safety check / authorization 
         
         chai.transfer(escr.client, clientAward); 
         chai.transfer(escr.provider, providerAward); 
-    	chai.transfer(msg.sender, lexFee); 
     	
 	    escr.released = true; 
 	    
-	    emit Resolved(index, details);
+	    emit Resolved(msg.sender, index, details);
     }
     
     /***************
