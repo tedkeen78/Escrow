@@ -1,5 +1,5 @@
 /*
-|| <$> LexGrow (LXG) <$> || version 1
+|| <$> LexGrow (LXG) <$> || version 2
 
 DEAR MSG.SENDER(S):
 
@@ -15,7 +15,7 @@ DEAR MSG.SENDER(S):
 pragma solidity 0.5.14;
 
 /***************
-OPENZEPPELIN REFERENCE CONTRACTS - Context, Role, SafeMath, IERC20 
+OPENZEPPELIN BASE CONTRACTS - Context, Role, SafeMath, IERC20 
 ***************/
 /*
  * @dev Provides information about the current execution context, including the
@@ -340,32 +340,39 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
+/***************
+EARNINGS PROTOCOL CONTRACTS - Dai Savings Rate, Compound Finance
+***************/
 /**
  * @title Chai.money interface
  * @dev see https://github.com/dapphub/chai
  */
-contract IChai {
-    function transfer(address dst, uint wad) external returns (bool);
-    // like transferFrom but dai-denominated
-    function move(address src, address dst, uint wad) external returns (bool);
-    function transferFrom(address src, address dst, uint wad) public returns (bool);
-    function approve(address usr, uint wad) external returns (bool);
+contract ICHAI {
     function balanceOf(address usr) external returns (uint);
-
-    // Approve by signature
-    function permit(address holder, address spender, uint256 nonce, uint256 expiry, bool allowed, uint8 v, bytes32 r, bytes32 s) external;
+    
+    function transfer(address dst, uint wad) external returns (bool);
 
     function dai(address usr) external returns (uint wad);
+    
     function dai(uint chai) external returns (uint wad);
 
-    // wad is denominated in dai
     function join(address dst, uint wad) external;
+}
 
-    // wad is denominated in (1/chi) * dai
-    function exit(address src, uint wad) public;
+/**
+ * @title Compound interface
+ * @dev see https://github.com/compound-developers/compound-supply-examples
+ */
+interface ICERC20 {
+    function balanceOf(address account) external view returns (uint256);
+    
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    
+    function mint(uint256) external returns (uint256);
 
-    // wad is denominated in dai
-    function draw(address src, uint wad) external returns (uint chai);
+    function exchangeRateCurrent() external returns (uint256);
+
+    function supplyRatePerBlock() external returns (uint256);
 }
 
 /***************
@@ -380,12 +387,20 @@ contract LexGrow is LexDAORole {
     
     // $CHAI details:
     address private chaiAddress = 0x06AF07097C9Eeb7fD685c692751D5C66dB49c215;
-    IChai public chai = IChai(chaiAddress);
+    ICHAI public chai = ICHAI(chaiAddress);
+    
+    // $USDC details:
+    address private usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    IERC20 public usdc = IERC20(usdcAddress);
+    
+    // $cUSDC details:
+    address private cUSDCAddress = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
+    ICERC20 public cUSDC = ICERC20(cUSDCAddress);
     
     // <$> LXG <$> details:
     address private vault = address(this);
     address payable public manager;
-    uint8 public version = 1;
+    uint8 public version = 2;
     uint256 public escrowFee;
     uint256 public lxg; // index for registered LexGrow
     string public emoji = "⚖️🌱⚔️";
@@ -399,11 +414,13 @@ contract LexGrow is LexDAORole {
         uint256 termination;
         uint256 index;
         string details; 
+        bool dsr;
         bool disputed; 
         bool released;
     }
     	
     // LXG Contract Events:
+    event Log(string, uint256); // log for Compound Finance interactions
     event Registered(address indexed client, address indexed provider, uint256 indexed index);  
     event Released(uint256 indexed index); 
     event Disputed(uint256 indexed index, string indexed details); 
@@ -412,6 +429,7 @@ contract LexGrow is LexDAORole {
     
     constructor () public {
         dai.approve(chaiAddress, uint(-1));
+        usdc.approve(cUSDCAddress, uint(-1));
         manager = msg.sender;
         escrowFee = 0;
     } 
@@ -419,7 +437,7 @@ contract LexGrow is LexDAORole {
     /***************
     ESCROW FUNCTIONS
     ***************/
-    function register( // register $DAI locker with DSR via $CHAI; arbitration via lexDAO
+    function registerDAI( // register $DAI locker with DSR via $CHAI; arbitration via lexDAO
         address provider,
         uint256 deposit, 
         uint256 termination,
@@ -439,13 +457,55 @@ contract LexGrow is LexDAORole {
                 chai.balanceOf(vault).sub(balance),
                 termination,
                 index,
-                details, 
+                details,
+                true,
                 false, 
                 false);
         
         address(manager).transfer(msg.value);
         
         emit Registered(msg.sender, provider, index); 
+    }
+    
+    function registerUSDC( // register $USDC locker with interest via $cUSDC; arbitration via lexDAO
+        address provider,
+        uint256 deposit, 
+        uint256 termination,
+        string memory details) public payable returns (uint) {
+        require(msg.value == escrowFee);
+	    
+	    // Amount of current exchange rate from $cUSDC to underlying
+        uint256 exchangeRateMantissa = cUSDC.exchangeRateCurrent();
+        emit Log("Exchange Rate (scaled up by 1e18): ", exchangeRateMantissa);
+        
+        // Amount added to supply balance this block
+        uint256 supplyRateMantissa = cUSDC.supplyRatePerBlock();
+        emit Log("Supply Rate: (scaled up by 1e18)", supplyRateMantissa);
+	    
+	    usdc.transferFrom(msg.sender, vault, deposit); // deposit $USDC
+	    uint256 balance = cUSDC.balanceOf(vault);
+        uint mintResult = cUSDC.mint(deposit); // wrap into $cUSDC and store in vault
+        
+        uint256 index = lxg.add(1); 
+	    lxg = lxg.add(1);
+                
+            escrow[index] = Escrow( 
+                msg.sender, 
+                provider,
+                deposit, 
+                cUSDC.balanceOf(vault).sub(balance),
+                termination,
+                index,
+                details, 
+                false,
+                false, 
+                false);
+        
+        address(manager).transfer(msg.value);
+        
+        emit Registered(msg.sender, provider, index);
+        
+        return mintResult; 
     }
     
     function release(uint256 index) public { 
@@ -455,21 +515,29 @@ contract LexGrow is LexDAORole {
     	require(now <= escr.termination); // program safety check / time
     	require(msg.sender == escr.client); // program safety check / authorization
 
-    	chai.transfer(escr.provider, escr.wrap); 
+        if (escr.dsr == true) {
+            chai.transfer(escr.provider, escr.wrap);
+        } else {
+            cUSDC.transfer(escr.provider, escr.wrap);
+        }
         
         escr.released = true; 
         
 	    emit Released(index); 
     }
     
-    function withdraw(uint256 index) public { // client can withdraw $CHAI if termination time passes
+    function withdraw(uint256 index) public { // withdraws wrapped deposit if termination time passes
     	Escrow storage escr = escrow[index];
         require(escr.disputed == false); // program safety check / status
         require(escr.released == false); // program safety check / status
     	require(now >= escr.termination); // program safety check / time
     	require(msg.sender == escr.client); // program safety check / authorization
         
-    	chai.transfer(escr.client, escr.wrap); 
+        if (escr.dsr == true) {
+            chai.transfer(escr.client, escr.wrap);
+        } else {
+            cUSDC.transfer(escr.client, escr.wrap);
+        }
         
         escr.released = true; 
         
@@ -498,8 +566,13 @@ contract LexGrow is LexDAORole {
         require(msg.sender != escr.client); // program safety check / authorization  
         require(msg.sender != escr.provider); // program safety check / authorization 
         
-        chai.transfer(escr.client, clientAward); 
-        chai.transfer(escr.provider, providerAward); 
+        if (escr.dsr == true) {
+            chai.transfer(escr.client, clientAward); 
+            chai.transfer(escr.provider, providerAward);
+        } else {
+            cUSDC.transfer(escr.client, clientAward); 
+            cUSDC.transfer(escr.provider, providerAward);
+        }
     	
 	    escr.released = true; 
 	    
