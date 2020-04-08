@@ -1,7 +1,7 @@
 # LexDAO Escrow
 Digital and legal programming for escrows.
 
-## v1 - LexGrow (LXG)
+## v1 - LexGrow (LXG) ⚖️🌱⚔️ 
 
 LXG stores deal details, permissions, and escrows Dai Stablecoin that can be resolved through lexDAO arbitration.  For interest accrual on escrowed Dai, LXG implements Chai wrapper for Dai Savings Rate. The Chai wrapper amount of escrowed Dai is paid out.  Future implementations will likely output Dai and involve additional logic for managing accrued interest. 
 
