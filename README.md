@@ -3,7 +3,7 @@ Digital and legal programming for escrows.
 
 ## v2 - LexGrow (LXG) ⚖️🌱⚔️ 
 
-LXG stores deal details, permissions, and escrows Dai Stablecoin that can be resolved through lexDAO arbitration.  For interest accrual on escrowed Dai or USDC, LXG uses the Dai Savings Rate "Chai" and Compound Fiance "cToken" wrappers.
+LXG stores deal details, permissions, and escrows Dai or USDC Stablecoin that can be resolved through lexDAO arbitration.  For interest accrual on escrowed Dai or USDC, LXG uses the Dai Savings Rate "Chai" and Compound Fiance "cToken" wrappers.
 
 The wrapper amount of deposit is paid out.  Future implementations will likely output underlying asset and involve additional logic for managing accrued interest. 
 
