@@ -7,7 +7,7 @@ LXG stores deal details, permissions, and escrows Dai or USDC Stablecoin that ca
 
 The wrapper amount of deposit is paid out.  Future implementations will likely output underlying asset and involve additional logic for managing accrued interest. 
 
-Ethereum mainnet deployment: [0x458613226d24412bB0FdF1cF02bd5C5388a41DC7](https://etherscan.io/address/0x458613226d24412bB0FdF1cF02bd5C5388a41DC7#code)
+Ethereum mainnet deployment: [0xecA1F2b5CD3519242797A6FC3a4aEBDcc8f71907](https://etherscan.io/address/0xecA1F2b5CD3519242797A6FC3a4aEBDcc8f71907#code)
 
 LexDAO Arbitration: [0x97103fda00a2b47EaC669568063C00e65866a633](https://mainnet.aragon.org/#/lexdao)
 
