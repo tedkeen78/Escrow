@@ -1,3 +1,7 @@
+/**
+ *Submitted for verification at Etherscan.io on 2020-04-09
+*/
+
 /*
 || <$> LexGrow (LXG) <$> || version 2
 
@@ -378,44 +382,44 @@ interface ICERC20 {
 /***************
 LXG CONTRACT
 ***************/
-contract LexGrow is LexDAORole {  
+contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that earn on DSR & Compound
     using SafeMath for uint256;
     
     // $DAI details:
-    address private daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    IERC20 public dai = IERC20(daiAddress);
+    address private daiToken = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    IERC20 public dai = IERC20(daiToken);
     
     // $CHAI details:
-    address private chaiAddress = 0x06AF07097C9Eeb7fD685c692751D5C66dB49c215;
-    ICHAI public chai = ICHAI(chaiAddress);
+    address private chaiToken = 0x06AF07097C9Eeb7fD685c692751D5C66dB49c215;
+    ICHAI public chai = ICHAI(chaiToken);
     
     // $USDC details:
-    address private usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    IERC20 public usdc = IERC20(usdcAddress);
+    address private usdcToken = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    IERC20 public usdc = IERC20(usdcToken);
     
     // $cUSDC details:
-    address private cUSDCAddress = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
-    ICERC20 public cUSDC = ICERC20(cUSDCAddress);
+    address private cUSDCtoken = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
+    ICERC20 public cUSDC = ICERC20(cUSDCtoken);
     
     // <$> LXG <$> details:
     address private vault = address(this);
-    address payable public manager;
+    address payable private lexDAO = 0x97103fda00a2b47EaC669568063C00e65866a633;
     uint8 public version = 2;
-    uint256 public escrowFee;
+    uint256 public depositFee;
     uint256 public lxg; // index for registered LexGrow
     string public emoji = "⚖️🌱⚔️";
-    mapping (uint256 => Escrow) public escrow; 
+    mapping (uint256 => Deposit) public deposit; 
 
-    struct Escrow {  
+    struct Deposit {  
         address client; 
         address provider;
-        uint256 deposit;
+        uint256 amount;
         uint256 wrap;
         uint256 termination;
         uint256 index;
         string details; 
         bool dsr;
-        bool disputed; 
+        bool locked; 
         bool released;
     }
     	
@@ -423,37 +427,35 @@ contract LexGrow is LexDAORole {
     event Log(string, uint256); // log for Compound Finance interactions
     event Registered(address indexed client, address indexed provider, uint256 indexed index);  
     event Released(uint256 indexed index); 
-    event Disputed(uint256 indexed index, string indexed details); 
+    event Locked(uint256 indexed index, string indexed details); 
     event Resolved(address indexed resolver, uint256 indexed index, string indexed details); 
-    event ManagerTransferred(address indexed manager, string indexed details);
     
     constructor () public {
-        dai.approve(chaiAddress, uint(-1));
-        usdc.approve(cUSDCAddress, uint(-1));
-        manager = msg.sender;
-        escrowFee = 0;
+        dai.approve(chaiToken, uint(-1));
+        usdc.approve(cUSDCtoken, uint(-1));
+        depositFee = 1000000000000000;
     } 
     
     /***************
-    ESCROW FUNCTIONS
+    DEPOSIT FUNCTIONS
     ***************/
     function registerDAI( // register $DAI locker with DSR via $CHAI; arbitration via lexDAO
         address provider,
-        uint256 deposit, 
+        uint256 amount, 
         uint256 termination,
         string memory details) public payable {
-        require(msg.value == escrowFee);
+        require(msg.value == depositFee);
 	    uint256 index = lxg.add(1); 
 	    lxg = lxg.add(1);
 	    
-	    dai.transferFrom(msg.sender, vault, deposit); // deposit $DAI
+	    dai.transferFrom(msg.sender, vault, amount); // deposit $DAI
         uint256 balance = chai.balanceOf(vault);
-        chai.join(vault, deposit); // wrap into $CHAI and store in vault
+        chai.join(vault, amount); // wrap into $CHAI and store in vault
                 
-            escrow[index] = Escrow( 
+            deposit[index] = Deposit( 
                 msg.sender, 
                 provider,
-                deposit, 
+                amount, 
                 chai.balanceOf(vault).sub(balance),
                 termination,
                 index,
@@ -462,37 +464,37 @@ contract LexGrow is LexDAORole {
                 false, 
                 false);
         
-        address(manager).transfer(msg.value);
+        address(lexDAO).transfer(msg.value);
         
         emit Registered(msg.sender, provider, index); 
     }
     
     function registerUSDC( // register $USDC locker with interest via $cUSDC; arbitration via lexDAO
         address provider,
-        uint256 deposit, 
+        uint256 amount, 
         uint256 termination,
         string memory details) public payable returns (uint) {
-        require(msg.value == escrowFee);
+        require(msg.value == depositFee);
 	    
 	    // Amount of current exchange rate from $cUSDC to underlying
         uint256 exchangeRateMantissa = cUSDC.exchangeRateCurrent();
-        emit Log("Exchange Rate (scaled up by 1e18): ", exchangeRateMantissa);
+        emit Log("Exchange Rate: (scaled up by 1e18)", exchangeRateMantissa);
         
         // Amount added to supply balance this block
         uint256 supplyRateMantissa = cUSDC.supplyRatePerBlock();
         emit Log("Supply Rate: (scaled up by 1e18)", supplyRateMantissa);
 	    
-	    usdc.transferFrom(msg.sender, vault, deposit); // deposit $USDC
+	    usdc.transferFrom(msg.sender, vault, amount); // deposit $USDC
 	    uint256 balance = cUSDC.balanceOf(vault);
-        uint mintResult = cUSDC.mint(deposit); // wrap into $cUSDC and store in vault
+        uint mintResult = cUSDC.mint(amount); // wrap into $cUSDC and store in vault
         
         uint256 index = lxg.add(1); 
 	    lxg = lxg.add(1);
                 
-            escrow[index] = Escrow( 
+            deposit[index] = Deposit( 
                 msg.sender, 
                 provider,
-                deposit, 
+                amount, 
                 cUSDC.balanceOf(vault).sub(balance),
                 termination,
                 index,
@@ -501,7 +503,7 @@ contract LexGrow is LexDAORole {
                 false, 
                 false);
         
-        address(manager).transfer(msg.value);
+        address(lexDAO).transfer(msg.value);
         
         emit Registered(msg.sender, provider, index);
         
@@ -509,37 +511,36 @@ contract LexGrow is LexDAORole {
     }
     
     function release(uint256 index) public { 
-    	Escrow storage escr = escrow[index];
-	    require(escr.disputed == false); // program safety check / status
-	    require(escr.released == false); // program safety check / status
-    	require(now <= escr.termination); // program safety check / time
-    	require(msg.sender == escr.client); // program safety check / authorization
+    	Deposit storage depos = deposit[index];
+	    require(depos.locked == false); // program safety check / status
+	    require(depos.released == false); // program safety check / status
+    	require(now <= depos.termination); // program safety check / time
+    	require(msg.sender == depos.client); // program safety check / authorization
 
-        if (escr.dsr == true) {
-            chai.transfer(escr.provider, escr.wrap);
+        if (depos.dsr == true) {
+            chai.transfer(depos.provider, depos.wrap);
         } else {
-            cUSDC.transfer(escr.provider, escr.wrap);
+            cUSDC.transfer(depos.provider, depos.wrap);
         }
         
-        escr.released = true; 
+        depos.released = true; 
         
 	    emit Released(index); 
     }
     
     function withdraw(uint256 index) public { // withdraws wrapped deposit if termination time passes
-    	Escrow storage escr = escrow[index];
-        require(escr.disputed == false); // program safety check / status
-        require(escr.released == false); // program safety check / status
-    	require(now >= escr.termination); // program safety check / time
-    	require(msg.sender == escr.client); // program safety check / authorization
+    	Deposit storage depos = deposit[index];
+        require(depos.locked == false); // program safety check / status
+        require(depos.released == false); // program safety check / status
+    	require(now >= depos.termination); // program safety check / time
         
-        if (escr.dsr == true) {
-            chai.transfer(escr.client, escr.wrap);
+        if (depos.dsr == true) {
+            chai.transfer(depos.client, depos.wrap);
         } else {
-            cUSDC.transfer(escr.client, escr.wrap);
+            cUSDC.transfer(depos.client, depos.wrap);
         }
         
-        escr.released = true; 
+        depos.released = true; 
         
 	    emit Released(index); 
     }
@@ -547,34 +548,34 @@ contract LexGrow is LexDAORole {
     /***************
     ARBITRATION FUNCTIONS
     ***************/
-    function dispute(uint256 index, string memory details) public {
-        Escrow storage escr = escrow[index]; 
-        require(escr.released == false); // program safety check / status
-        require(now <= escr.termination); // program safety check / time
-        require(msg.sender == escr.client || msg.sender == escr.provider); // program safety check / authorization
+    function lock(uint256 index, string memory details) public {
+        Deposit storage depos = deposit[index]; 
+        require(depos.released == false); // program safety check / status
+        require(now <= depos.termination); // program safety check / time
+        require(msg.sender == depos.client || msg.sender == depos.provider); // program safety check / authorization
 
-	    escr.disputed = true; 
+	    depos.locked = true; 
 	    
-	    emit Disputed(index, details);
+	    emit Locked(index, details);
     }
     
     function resolve(uint256 index, uint256 clientAward, uint256 providerAward, string memory details) public onlyLexDAO {
-        Escrow storage escr = escrow[index];
-	    require(escr.disputed == true); // program safety check / status
-	    require(escr.released == false); // program safety check / status
-	    require(clientAward.add(providerAward) == escr.wrap); // program safety check / economics
-        require(msg.sender != escr.client); // program safety check / authorization  
-        require(msg.sender != escr.provider); // program safety check / authorization 
+        Deposit storage depos = deposit[index];
+	    require(depos.locked == true); // program safety check / status
+	    require(depos.released == false); // program safety check / status
+	    require(clientAward.add(providerAward) == depos.wrap); // program safety check / economics
+        require(msg.sender != depos.client); // program safety check / authorization  
+        require(msg.sender != depos.provider); // program safety check / authorization 
         
-        if (escr.dsr == true) {
-            chai.transfer(escr.client, clientAward); 
-            chai.transfer(escr.provider, providerAward);
+        if (depos.dsr == true) {
+            chai.transfer(depos.client, clientAward); 
+            chai.transfer(depos.provider, providerAward);
         } else {
-            cUSDC.transfer(escr.client, clientAward); 
-            cUSDC.transfer(escr.provider, providerAward);
+            cUSDC.transfer(depos.client, clientAward); 
+            cUSDC.transfer(depos.provider, providerAward);
         }
     	
-	    escr.released = true; 
+	    depos.released = true; 
 	    
 	    emit Resolved(msg.sender, index, details);
     }
@@ -582,15 +583,8 @@ contract LexGrow is LexDAORole {
     /***************
     MGMT FUNCTIONS
     ***************/
-    function newEscrowFee(uint256 weiAmount) public {
-        require(msg.sender == manager);
-        escrowFee = weiAmount;
-    }
-    
-    function transferManager(address payable newManager, string memory details) public {
-        require(msg.sender == manager);
-        manager = newManager; 
-        
-        emit ManagerTransferred(manager, details);
+    function newDepositFee(uint256 weiAmount) public {
+        require(msg.sender == lexDAO);
+        depositFee = weiAmount;
     }
 }
