@@ -11,6 +11,6 @@ Ethereum mainnet deployment: [0xecA1F2b5CD3519242797A6FC3a4aEBDcc8f71907](https:
 
 LexDAO Arbitration: [0x97103fda00a2b47EaC669568063C00e65866a633](https://mainnet.aragon.org/#/lexdao)
 
-OpenLaw forms simplify drafting and execution of deals that integrate DSE: 
+OpenLaw forms that integrate LXG: 
 
 - [DIGITAL ESCROW FOR SALE OF GOODS](https://lib.openlaw.io/web/default/template/Digital%20Escrow%20for%20Sale%20of%20Goods)
