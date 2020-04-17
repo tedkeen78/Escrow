@@ -441,10 +441,10 @@ contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that ear
         uint256 termination,
         string memory details) public payable {
         require(msg.value == depositFee);
-	    uint256 index = lxg.add(1); 
-	    lxg = lxg.add(1);
+	uint256 index = lxg.add(1); 
+	lxg = lxg.add(1);
 	    
-	    dai.transferFrom(msg.sender, vault, amount); // deposit $DAI
+	dai.transferFrom(msg.sender, vault, amount); // deposit $DAI
         uint256 balance = chai.balanceOf(vault);
         chai.join(vault, amount); // wrap into $CHAI and store in vault
                 
@@ -472,7 +472,7 @@ contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that ear
         string memory details) public payable returns (uint) {
         require(msg.value == depositFee);
 	    
-	    // Amount of current exchange rate from $cUSDC to underlying
+	// Amount of current exchange rate from $cUSDC to underlying
         uint256 exchangeRateMantissa = cUSDC.exchangeRateCurrent();
         emit Log("Exchange Rate: (scaled up by 1e18)", exchangeRateMantissa);
         
@@ -480,12 +480,12 @@ contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that ear
         uint256 supplyRateMantissa = cUSDC.supplyRatePerBlock();
         emit Log("Supply Rate: (scaled up by 1e18)", supplyRateMantissa);
 	    
-	    usdc.transferFrom(msg.sender, vault, amount); // deposit $USDC
-	    uint256 balance = cUSDC.balanceOf(vault);
+	usdc.transferFrom(msg.sender, vault, amount); // deposit $USDC
+	uint256 balance = cUSDC.balanceOf(vault);
         uint mintResult = cUSDC.mint(amount); // wrap into $cUSDC and store in vault
         
         uint256 index = lxg.add(1); 
-	    lxg = lxg.add(1);
+	lxg = lxg.add(1);
                 
             deposit[index] = Deposit( 
                 msg.sender, 
@@ -508,8 +508,8 @@ contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that ear
     
     function release(uint256 index) public { 
     	Deposit storage depos = deposit[index];
-	    require(depos.locked == false); // program safety check / status
-	    require(depos.released == false); // program safety check / status
+	require(depos.locked == false); // program safety check / status
+	require(depos.released == false); // program safety check / status
     	require(now <= depos.termination); // program safety check / time
     	require(msg.sender == depos.client); // program safety check / authorization
 
@@ -521,7 +521,7 @@ contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that ear
         
         depos.released = true; 
         
-	    emit Released(index); 
+	emit Released(index); 
     }
     
     function withdraw(uint256 index) public { // withdraws wrapped deposit if termination time passes
@@ -538,7 +538,7 @@ contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that ear
         
         depos.released = true; 
         
-	    emit Released(index); 
+	emit Released(index); 
     }
     
     /***************
@@ -550,16 +550,16 @@ contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that ear
         require(now <= depos.termination); // program safety check / time
         require(msg.sender == depos.client || msg.sender == depos.provider); // program safety check / authorization
 
-	    depos.locked = true; 
+	depos.locked = true; 
 	    
-	    emit Locked(index, details);
+	emit Locked(index, details);
     }
     
     function resolve(uint256 index, uint256 clientAward, uint256 providerAward, string memory details) public onlyLexDAO {
         Deposit storage depos = deposit[index];
-	    require(depos.locked == true); // program safety check / status
-	    require(depos.released == false); // program safety check / status
-	    require(clientAward.add(providerAward) == depos.wrap); // program safety check / economics
+	require(depos.locked == true); // program safety check / status
+	require(depos.released == false); // program safety check / status
+	require(clientAward.add(providerAward) == depos.wrap); // program safety check / economics
         require(msg.sender != depos.client); // program safety check / authorization  
         require(msg.sender != depos.provider); // program safety check / authorization 
         
@@ -571,9 +571,9 @@ contract LexGrow is LexDAORole { // Deal depositing for Digital Dollars that ear
             cUSDC.transfer(depos.provider, providerAward);
         }
     	
-	    depos.released = true; 
+	depos.released = true; 
 	    
-	    emit Resolved(msg.sender, index, details);
+	emit Resolved(msg.sender, index, details);
     }
     
     /***************
