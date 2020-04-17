@@ -13,4 +13,6 @@ LexDAO Arbitration: [0x97103fda00a2b47EaC669568063C00e65866a633](https://mainnet
 
 OpenLaw forms that integrate LXG: 
 
-- [DIGITAL ESCROW FOR SALE OF GOODS](https://lib.openlaw.io/web/default/template/Digital%20Escrow%20for%20Sale%20of%20Goods)
+- [DEFI DEAL LOCKER](https://lib.openlaw.io/web/default/template/Defi%20Deal%20Locker) 🔐
+
+- [DIGITAL ESCROW FOR SALE OF GOODS](https://lib.openlaw.io/web/default/template/Digital%20Escrow%20for%20Sale%20of%20Goods) 📦
